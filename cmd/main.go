@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ahmadnaufal/openidea-paimonbank/internal/balance"
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/config"
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/image"
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/user"
@@ -46,6 +47,7 @@ func main() {
 	db := connectToDB(cfg.Database)
 
 	userRepo := user.NewUserRepo(db)
+	balanceRepo := balance.NewBalanceRepo(db)
 
 	// trxProvider := config.NewTransactionProvider(db)
 
@@ -62,9 +64,13 @@ func main() {
 		JwtProvider: &jwtProvider,
 		SaltCost:    cfg.BcryptSalt,
 	})
+	balanceHandler := balance.NewBalance(balance.BalanceHandlerConfig{
+		BalanceRepo: &balanceRepo,
+	})
 
 	imageHandler.RegisterRoute(app, jwtProvider)
 	userHandler.RegisterRoute(app, jwtProvider)
+	balanceHandler.RegisterRoute(app, jwtProvider)
 
 	// setup instrumentation
 	prometheus := fiberprometheus.New("paimonbank")
