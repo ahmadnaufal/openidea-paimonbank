@@ -8,6 +8,8 @@ type AddBalanceRequest struct {
 	AddedBalance            uint   `json:"addedBalance" validate:"required,gte=0"`
 	Currency                string `json:"currency" validate:"required,currency"`
 	TransferProofImg        string `json:"transferProofImg" validate:"required,url"`
+
+	UserID string
 }
 
 type GetBalanceHistoryRequest struct {
