@@ -4,18 +4,19 @@ services:
     ports:
       - "8080:8000"
     environment:
-      DB_NAME: "openidea-paimonbank"
-      DB_PORT: "5432"
-      DB_HOST: "localhost"
-      DB_USERNAME: "postgres"
-      DB_PASSWORD: "postgres"
-      APP_PORT: "8000"
-      JWT_SECRET: ""
-      BCRYPT_SALT: 10
-      S3_ENABLED: false
-      S3_ID: ""
-      S3_SECRET_KEY: ""
-      S3_BASE_URL: ""
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
+      DB_HOST: ${DB_HOST}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PARAMS: ${DB_PARAMS}
+      JWT_SECRET: ${JWT_SECRET}
+      BCRYPT_SALT: ${BCRYPT_SALT}
+      S3_ID: ${S3_ID}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+      ENV: ${ENV}
     depends_on:
       db:
         condition: service_healthy
@@ -24,9 +25,9 @@ services:
     image: postgres:14.1-alpine
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: openidea-paimonbank
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - 5432:5432
     expose:
