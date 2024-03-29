@@ -17,9 +17,9 @@ func NewUserRepo(db *sqlx.DB) UserRepo {
 func (r *UserRepo) CreateUser(ctx context.Context, user User) error {
 	query := `
 		INSERT INTO users
-			(id, email, phone, name, password)
+			(id, email, name, password)
 		VALUES
-			(:id, :email, :phone, :name, :password)
+			(:id, :email, :name, :password)
 	`
 
 	updatedQuery, args, err := sqlx.Named(query, user)
@@ -67,10 +67,8 @@ func (r *UserRepo) GetUserByID(ctx context.Context, id string) (User, error) {
 		SELECT
 			id,
 			email,
-			phone,
 			name,
-			password,
-			image_url
+			password
 		FROM
 			users
 		WHERE
