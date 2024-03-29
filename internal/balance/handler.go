@@ -133,7 +133,6 @@ func (h *balanceHandler) GetBalanceHistory(c *fiber.Ctx) error {
 			Balance:          balanceEntity.Balance,
 			Currency:         balanceEntity.Currency,
 			TransferProofImg: balanceEntity.TransferProofImg,
-			CreatedAt:        uint64(balanceEntity.CreatedAt.UnixMilli()),
 			Source: BalanceSourceResponse{
 				BankAccountNumber: balanceEntity.SourceBankAccountNumber,
 				BankName:          balanceEntity.SourceBankName,

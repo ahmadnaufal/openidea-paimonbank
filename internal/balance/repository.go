@@ -30,10 +30,12 @@ func (r *balanceRepo) AddBalance(ctx context.Context, tx *sql.Tx, val BalanceHis
 		return err
 	}
 
+	dollarQuery := sqlx.Rebind(sqlx.DOLLAR, query)
+
 	if tx != nil {
-		_, err = tx.ExecContext(ctx, query, args...)
+		_, err = tx.ExecContext(ctx, dollarQuery, args...)
 	} else {
-		_, err = r.db.ExecContext(ctx, query, args...)
+		_, err = r.db.ExecContext(ctx, dollarQuery, args...)
 	}
 	if err != nil {
 		return err
@@ -129,7 +131,7 @@ func (r *balanceRepo) GetBalancePerCurrencies(ctx context.Context, userID string
 		FROM
 			balance_histories
 		WHERE
-			user_id = ?
+			user_id = $1
 		GROUP BY
 			currency
 		ORDER BY
