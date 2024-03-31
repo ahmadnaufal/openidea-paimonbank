@@ -2,7 +2,9 @@ services:
   app:
     build: .
     ports:
-      - "8080:8000"
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./ap-southeast-1-bundle.pem:/home/ubuntu/ap-southeast-1-bundle.pem
     environment:
@@ -19,32 +21,12 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       S3_REGION: ${S3_REGION}
       ENV: ${ENV}
-    depends_on:
-      db:
-        condition: service_healthy
-  db:
-    platform: linux/x86_64
-    image: postgres:14.1-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    ports:
-      - 5432:5432
-    expose:
-      - 5432
-    volumes:
-      - db:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
   prometheus:
     image: prom/prometheus:v2.50.0
     ports:
       - 9090:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
@@ -59,6 +41,8 @@ services:
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - grafana_data:/var/lib/grafana
       # • `grafana_data` refers to `volumes.grafana_data` used to make grafana information presists each restart
