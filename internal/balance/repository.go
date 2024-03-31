@@ -121,7 +121,7 @@ func getLimitAndOffset(req GetBalanceHistoryRequest) (string, []interface{}) {
 	return query, args
 }
 
-func (r *balanceRepo) GetBalancePerCurrencies(ctx context.Context, userID string) ([]BalancePerCurrency, error) {
+func (r *balanceRepo) GetBalancePerCurrencies(ctx context.Context, userID, currency string) ([]BalancePerCurrency, error) {
 	var balancePerCurrency []BalancePerCurrency
 
 	baseQuery := `
@@ -131,14 +131,25 @@ func (r *balanceRepo) GetBalancePerCurrencies(ctx context.Context, userID string
 		FROM
 			balance_histories
 		WHERE
-			user_id = $1
+			user_id = ?
+			%s
 		GROUP BY
 			currency
 		ORDER BY
 			balance_per_currency DESC
 	`
 
-	err := r.db.SelectContext(ctx, &balancePerCurrency, baseQuery, userID)
+	args := []interface{}{userID}
+
+	var additionalWhere string
+	if currency != "" {
+		additionalWhere = " AND currency = ?"
+		args = append(args, currency)
+	}
+
+	query := fmt.Sprintf(baseQuery, additionalWhere)
+
+	err := r.db.SelectContext(ctx, &balancePerCurrency, sqlx.Rebind(sqlx.DOLLAR, query), args...)
 	if err != nil {
 		return balancePerCurrency, err
 	}

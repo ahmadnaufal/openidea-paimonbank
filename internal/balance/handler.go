@@ -1,6 +1,9 @@
 package balance
 
 import (
+	"context"
+	"strings"
+
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/config"
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/model"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/jwt"
@@ -23,12 +26,15 @@ func NewBalance(cfg BalanceHandlerConfig) balanceHandler {
 }
 
 func (h *balanceHandler) RegisterRoute(r *fiber.App, jwtProvider jwt.JWTProvider) {
-	imageGroup := r.Group("/v1/balance")
 	authMiddleware := jwtProvider.Middleware()
 
-	imageGroup.Post("/", authMiddleware, h.AddBalance)
-	imageGroup.Get("/", authMiddleware, h.GetBalances)
-	imageGroup.Get("/history", authMiddleware, h.GetBalanceHistory)
+	balanceGroup := r.Group("/v1/balance")
+	balanceGroup.Post("/", authMiddleware, h.AddBalance)
+	balanceGroup.Get("/", authMiddleware, h.GetBalances)
+	balanceGroup.Get("/history", authMiddleware, h.GetBalanceHistory)
+
+	transactionGroup := r.Group("/v1/transaction")
+	transactionGroup.Post("/", authMiddleware, h.CreateTransaction)
 }
 
 func (h *balanceHandler) AddBalance(c *fiber.Ctx) error {
@@ -72,7 +78,6 @@ func (h *balanceHandler) AddBalance(c *fiber.Ctx) error {
 			Balance:          balanceEntity.Balance,
 			Currency:         balanceEntity.Currency,
 			TransferProofImg: balanceEntity.TransferProofImg,
-			CreatedAt:        uint64(balanceEntity.CreatedAt.UnixMilli()),
 			Source: BalanceSourceResponse{
 				BankAccountNumber: balanceEntity.SourceBankAccountNumber,
 				BankName:          balanceEntity.SourceBankName,
@@ -88,7 +93,7 @@ func (h *balanceHandler) GetBalances(c *fiber.Ctx) error {
 	}
 
 	ctx := c.Context()
-	currencyBalances, err := h.balanceRepo.GetBalancePerCurrencies(ctx, claims.UserID)
+	currencyBalances, err := h.balanceRepo.GetBalancePerCurrencies(ctx, claims.UserID, "")
 	if err != nil {
 		return errors.Wrap(err, "GetBalancePerCurrencies error")
 	}
@@ -133,6 +138,7 @@ func (h *balanceHandler) GetBalanceHistory(c *fiber.Ctx) error {
 			Balance:          balanceEntity.Balance,
 			Currency:         balanceEntity.Currency,
 			TransferProofImg: balanceEntity.TransferProofImg,
+			CreatedAt:        uint64(balanceEntity.CreatedAt.UnixMilli()),
 			Source: BalanceSourceResponse{
 				BankAccountNumber: balanceEntity.SourceBankAccountNumber,
 				BankName:          balanceEntity.SourceBankName,
@@ -149,4 +155,72 @@ func (h *balanceHandler) GetBalanceHistory(c *fiber.Ctx) error {
 			Total:  count,
 		},
 	})
+}
+
+func (h *balanceHandler) CreateTransaction(c *fiber.Ctx) error {
+	var payload CreateTransactionRequest
+	claims, err := jwt.GetLoggedInUser(c)
+	if err != nil {
+		return config.ErrRequestForbidden
+	}
+	payload.UserID = claims.UserID
+
+	if err := c.BodyParser(&payload); err != nil {
+		return errors.Wrap(config.ErrMalformedRequest, err.Error())
+	}
+
+	if err := validation.Validate(payload); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	balanceEntity, err := h.createTransaction(c.Context(), payload)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(model.DataResponse{
+		Message: "success",
+		Data: BalanceHistoryResponse{
+			TransactionID:    balanceEntity.ID,
+			Balance:          balanceEntity.Balance,
+			Currency:         balanceEntity.Currency,
+			TransferProofImg: balanceEntity.TransferProofImg,
+			CreatedAt:        uint64(balanceEntity.CreatedAt.UnixMilli()),
+			Source: BalanceSourceResponse{
+				BankAccountNumber: balanceEntity.SourceBankAccountNumber,
+				BankName:          balanceEntity.SourceBankName,
+			},
+		},
+	})
+}
+
+func (h *balanceHandler) createTransaction(ctx context.Context, payload CreateTransactionRequest) (BalanceHistory, error) {
+	// first, validate if the budget does exist
+	currencyBudgets, err := h.balanceRepo.GetBalancePerCurrencies(ctx, payload.UserID, payload.FromCurrency)
+	if err != nil {
+		return BalanceHistory{}, errors.Wrap(err, "GetBalancePerCurrencies error")
+	}
+	if len(currencyBudgets) != 1 || (currencyBudgets[0].Balance < int(payload.Balances)) {
+		return BalanceHistory{}, config.ErrInsufficientBalance
+	}
+
+	normalizedCurrency := strings.ToUpper(payload.FromCurrency)
+	deductedBalance := int(payload.Balances) * -1
+	// then, save the balance history
+	transactionID := uuid.NewString()
+	balanceEntity := BalanceHistory{
+		ID:                      transactionID,
+		UserID:                  payload.UserID,
+		Balance:                 deductedBalance,
+		Currency:                normalizedCurrency,
+		TransferProofImg:        "",
+		SourceBankAccountNumber: payload.RecipientBankAccountNumber,
+		SourceBankName:          payload.RecipientBankName,
+	}
+	err = h.balanceRepo.AddBalance(ctx, nil, balanceEntity)
+	if err != nil {
+		return BalanceHistory{}, errors.Wrap(err, "AddBalance error")
+	}
+
+	return balanceEntity, nil
 }

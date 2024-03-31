@@ -19,6 +19,15 @@ type GetBalanceHistoryRequest struct {
 	UserID string
 }
 
+type CreateTransactionRequest struct {
+	RecipientBankAccountNumber string `json:"recipientBankAccountNumber" validate:"required,min=5,max=30"`
+	RecipientBankName          string `json:"recipientBankName" validate:"required,min=5,max=30"`
+	FromCurrency               string `json:"fromCurrency" validate:"required,iso4217"`
+	Balances                   uint   `json:"balances" validate:"required,gt=0"`
+
+	UserID string
+}
+
 type BalanceHistory struct {
 	ID                      string    `db:"id"`
 	UserID                  string    `db:"user_id"`
