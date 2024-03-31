@@ -52,6 +52,11 @@ func (h *balanceHandler) AddBalance(c *fiber.Ctx) error {
 	if err := validation.Validate(payload); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+	comps := strings.Split(payload.TransferProofImg, "/")
+	filename := comps[len(comps)-1]
+	if len(strings.Split(filename, ".")) < 2 {
+		return fiber.ErrBadRequest
+	}
 
 	ctx := c.Context()
 
@@ -120,8 +125,9 @@ func (h *balanceHandler) GetBalanceHistory(c *fiber.Ctx) error {
 	if err := c.QueryParser(&payload); err != nil {
 		return errors.Wrap(config.ErrMalformedRequest, err.Error())
 	}
+	payload.Queries = c.Queries()
 
-	if err := validation.Validate(payload); err != nil {
+	if err := payload.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
