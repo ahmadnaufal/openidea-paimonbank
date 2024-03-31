@@ -10,8 +10,8 @@ type DatabaseConfig struct {
 	Password          string `env:"DB_PASSWORD"`
 	MaxOpenConnection int    `env:"DB_MAX_OPEN_CONNECTION,default=0"`
 	MaxIdleConnection int    `env:"DB_MAX_IDLE_CONNECTION,default=0"`
-	MaxConnLifetime   int    `env:"DB_MAX_CONNECTION_LIFETIME,default=60"`
-	MaxConnIdleTime   int    `env:"DB_MAX_CONNECTION_IDLE_TIME,default=5"`
+	MaxConnLifetime   int    `env:"DB_MAX_CONNECTION_LIFETIME,default=30"`
+	MaxConnIdleTime   int    `env:"DB_MAX_CONNECTION_IDLE_TIME,default=1"`
 	Params            string `env:"DB_PARAMS"`
 }
 

@@ -15,8 +15,10 @@ import (
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/user"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/jwt"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/middleware"
-	"github.com/ahmadnaufal/openidea-paimonbank/pkg/prometheus"
+	promPkg "github.com/ahmadnaufal/openidea-paimonbank/pkg/prometheus"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/s3"
+	"github.com/dlmiddlecote/sqlstats"
+	"github.com/prometheus/client_golang/prometheus"
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gofiber/fiber/v2"
@@ -40,14 +42,17 @@ func main() {
 	app.Use(compress.New())
 	// custom middleware to set all method not allowed response to not found
 	app.Use(middleware.CustomMiddleware404())
-	// setup instrumentation
-	prom := prometheus.NewFiberPromClient()
-	prom.Register(app)
-	app.Use(prom.Middleware())
 
 	jwtProvider := jwt.NewJWTProvider(cfg.JWTSecret)
 
 	db := connectToDB(cfg.Database)
+	dbCollector := sqlstats.NewStatsCollector("paimonbank", db)
+	prometheus.MustRegister(dbCollector)
+
+	// setup instrumentation
+	prom := promPkg.NewFiberPromClient()
+	prom.Register(app)
+	app.Use(prom.Middleware())
 
 	userRepo := user.NewUserRepo(db)
 	balanceRepo := balance.NewBalanceRepo(db)
