@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "8080:8000"
+    volumes:
+      - ./ap-southeast-1-bundle.pem:/home/ubuntu/ap-southeast-1-bundle.pem
     environment:
       DB_NAME: ${DB_NAME}
       DB_PORT: ${DB_PORT}
