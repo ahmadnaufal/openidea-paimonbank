@@ -15,9 +15,9 @@ import (
 	"github.com/ahmadnaufal/openidea-paimonbank/internal/user"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/jwt"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/middleware"
+	"github.com/ahmadnaufal/openidea-paimonbank/pkg/prometheus"
 	"github.com/ahmadnaufal/openidea-paimonbank/pkg/s3"
 
-	"github.com/ansrivas/fiberprometheus/v2"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -33,7 +33,6 @@ func main() {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: config.DefaultErrorHandler(),
 		Prefork:      false,
-		Concurrency:  1024 * 1024,
 	})
 
 	app.Use(logger.New())
@@ -41,6 +40,10 @@ func main() {
 	app.Use(compress.New())
 	// custom middleware to set all method not allowed response to not found
 	app.Use(middleware.CustomMiddleware404())
+	// setup instrumentation
+	prom := prometheus.NewFiberPromClient()
+	prom.Register(app)
+	app.Use(prom.Middleware())
 
 	jwtProvider := jwt.NewJWTProvider(cfg.JWTSecret)
 
@@ -71,11 +74,6 @@ func main() {
 	imageHandler.RegisterRoute(app, jwtProvider)
 	userHandler.RegisterRoute(app, jwtProvider)
 	balanceHandler.RegisterRoute(app, jwtProvider)
-
-	// setup instrumentation
-	prometheus := fiberprometheus.New("paimonbank")
-	prometheus.RegisterAt(app, "/metrics")
-	app.Use(prometheus.Middleware)
 
 	addr := fmt.Sprintf(":%s", cfg.AppPort)
 
